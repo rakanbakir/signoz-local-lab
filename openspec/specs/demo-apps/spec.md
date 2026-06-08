@@ -37,15 +37,6 @@ The system SHALL deploy a lightweight Python Flask application with manual OTel 
 - **AND** /api/users SHALL return a list of users with nested spans
 - **AND** /api/users/<id> SHALL return a single user with simulated DB/cache spans
 
-### Requirement: Online Boutique demo application
-The system SHALL deploy Google's Online Boutique microservices demo application.
-
-#### Scenario: Online Boutique deployment
-- **GIVEN** the SigNoz platform is running
-- **WHEN** online-boutique.yaml is applied
-- **THEN** the full microservices demo SHALL be deployed
-- **AND** each service SHALL export OTLP telemetry to the SigNoz collector
-
 ### Requirement: Trace demo application
 The system SHALL deploy a custom trace demo for generating sample traces.
 

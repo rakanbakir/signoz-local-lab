@@ -59,7 +59,6 @@ curl http://localhost:8080/api/users/1
 | **k8s-collector** | OTel Collector DaemonSet — collects cluster-wide telemetry |
 | **OTel Operator** | Manages OpenTelemetry collectors and auto-instrumentation |
 | **basic-demo** | Python Flask app with manual OTel instrumentation |
-| **Online Boutique** | Google microservices demo (optional, resource-heavy) |
 | **trace-demo** | Simple Python trace generator |
 
 ## Demo App
