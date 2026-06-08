@@ -1,0 +1,225 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: k8s-collector
+  namespace: platform
+spec:
+  mode: daemonset
+  serviceAccount: k8s-collector
+  image: otel/opentelemetry-collector-contrib:0.111.0
+  env:
+    - name: KUBE_NODE_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: spec.nodeName
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      filelog:
+        include:
+          - /hostfs/var/log/pods/*/*/*.log
+        include_file_path: true
+        include_file_name: false
+        start_at: beginning
+        operators:
+          - type: router
+            id: get-format
+            routes:
+              - output: parser-docker
+                expr: body matches "^\\{"
+              - output: parser-crio
+                expr: body matches "^[^ Z]+ "
+              - output: parser-containerd
+                expr: body matches "^[^ Z]+Z"
+          - type: regex_parser
+            id: parser-docker
+            output: recombine
+            regex: ^\s*(?P<time>[^ ]+)\s+(?P<stream>stdout|stderr)\s+(?P<logtag>[^ ]*)\s*(?P<log>.*)$
+          - type: regex_parser
+            id: parser-crio
+            output: recombine
+            regex: ^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$
+            timestamp:
+              parse_from: attributes.time
+              layout_type: gotime
+              layout: "2006-01-02T15:04:05.999999999Z07:00"
+          - type: regex_parser
+            id: parser-containerd
+            output: recombine
+            regex: ^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$
+            timestamp:
+              parse_from: attributes.time
+              layout: "%Y-%m-%dT%H:%M:%S.%LZ"
+          - type: recombine
+            id: recombine
+            output: extract_metadata_from_filepath
+            combine_field: attributes.log
+            combine_with: ""
+            source_identifier: attributes["log.file.path"]
+            is_last_entry: attributes.logtag == 'F'
+          - type: regex_parser
+            id: extract_metadata_from_filepath
+            regex: ^\/hostfs\/var\/log\/pods\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<pod_uid>[^/]+)/(?P<container_name>[^/]+)\/\d+\.log$
+            parse_from: attributes["log.file.path"]
+      kubeletstats:
+        collection_interval: 30s
+        auth_type: serviceAccount
+        endpoint: "https://${env:KUBE_NODE_NAME}:10250"
+        insecure_skip_verify: true
+        metric_groups:
+          - node
+          - pod
+      hostmetrics:
+        root_path: /hostfs
+        collection_interval: 30s
+        scrapers:
+          cpu:
+            metrics:
+              system.cpu.utilization:
+                enabled: true
+          memory:
+            metrics:
+              system.memory.usage:
+                enabled: true
+          disk:
+            metrics:
+              system.disk.io:
+                enabled: true
+              system.disk.operations:
+                enabled: true
+          network:
+            metrics:
+              system.network.io:
+                enabled: true
+              system.network.errors:
+                enabled: true
+              system.network.packets:
+                enabled: true
+    processors:
+      batch:
+        send_batch_size: 5000
+        timeout: 5s
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 128
+        spike_limit_mib: 32
+      k8sattributes:
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.node.name
+        passthrough: false
+        filter:
+          node_from_env_var: KUBE_NODE_NAME
+      transform:
+        log_statements:
+          - context: log
+            statements:
+              - set(resource.attributes["service.name"], Concat(["k8s/", resource.attributes["k8s.namespace.name"], "/", resource.attributes["k8s.pod.name"]], "")) where resource.attributes["k8s.namespace.name"] != nil
+      resource:
+        attributes:
+          - key: host.name
+            value: ${env:KUBE_NODE_NAME}
+            action: upsert
+          - key: k8s.node.name
+            value: ${env:KUBE_NODE_NAME}
+            action: upsert
+      resourcedetection:
+        detectors: [env, system]
+    exporters:
+      otlphttp:
+        endpoint: http://my-release-signoz-otel-collector.platform.svc.cluster.local:4318
+        tls:
+          insecure: true
+    service:
+      pipelines:
+        logs:
+          receivers:
+            - filelog
+          processors:
+            - k8sattributes
+            - transform
+            - memory_limiter
+            - batch
+          exporters:
+            - otlphttp
+        metrics:
+          receivers:
+            - kubeletstats
+            - hostmetrics
+            - otlp
+          processors:
+            - k8sattributes
+            - resourcedetection
+            - resource
+            - memory_limiter
+            - batch
+          exporters:
+            - otlphttp
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - k8sattributes
+            - memory_limiter
+            - batch
+          exporters:
+            - otlphttp
+  volumeMounts:
+    - name: hostfs
+      mountPath: /hostfs
+      readOnly: true
+      mountPropagation: HostToContainer
+  volumes:
+    - name: hostfs
+      hostPath:
+        path: /
+  shareProcessNamespace: true
+  securityContext:
+    privileged: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-collector
+  namespace: platform
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-collector
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - nodes
+      - nodes/stats
+      - namespaces
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-collector
+subjects:
+  - kind: ServiceAccount
+    name: k8s-collector
+    namespace: platform

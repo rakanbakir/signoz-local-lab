@@ -1,0 +1,35 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: signoz-instrumentation
+  namespace: platform
+spec:
+  exporter:
+    endpoint: http://my-release-signoz-otel-collector.platform.svc.cluster.local:4318
+  propagators:
+    - tracecontext
+    - baggage
+    - b3
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1"
+  python:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://my-release-signoz-otel-collector.platform.svc.cluster.local:4318
+  java:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://my-release-signoz-otel-collector.platform.svc.cluster.local:4318
+  nodejs:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://my-release-signoz-otel-collector.platform.svc.cluster.local:4318
+  dotnet:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://my-release-signoz-otel-collector.platform.svc.cluster.local:4318
+  ruby:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://my-release-signoz-otel-collector.platform.svc.cluster.local:4318

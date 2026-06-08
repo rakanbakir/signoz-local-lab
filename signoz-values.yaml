@@ -1,0 +1,97 @@
+global:
+  cloud: other
+  clusterName: signoz-local
+
+clickhouse:
+  enabled: true
+  persistence:
+    size: 5Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: 200m
+      memory: 768Mi
+    limits:
+      cpu: "1.5"
+      memory: 2Gi
+  configuration:
+    files:
+      config.d/memory.xml: |
+        <clickhouse>
+          <max_server_memory_usage>0</max_server_memory_usage>
+          <max_server_memory_usage_to_ram_ratio>0.85</max_server_memory_usage_to_ram_ratio>
+        </clickhouse>
+  initContainers:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+zookeeper:
+  enabled: true
+  persistence:
+    size: 1Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+signoz:
+  replicaCount: 1
+  image:
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 500Mi
+    storageClass: standard
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    hosts:
+      - host: signoz.local
+        paths:
+          - path: /
+            pathType: Prefix
+            port: 8080
+  env:
+    signoz_alertmanager_provider: signoz
+    signoz_alertmanager_signoz_external__url: http://signoz.local
+    signoz_emailing_enabled: false
+    signoz_prometheus_active__query__tracker_enabled: false
+    signoz_telemetrystore_provider: clickhouse
+
+otelCollector:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+telemetryStoreMigrator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

@@ -1,0 +1,7 @@
+# Dependencies
+.DS_Store
+*.swp
+*.swo
+
+# OpenSpec archives
+openspec/changes/archive/

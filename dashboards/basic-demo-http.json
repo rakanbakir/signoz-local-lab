@@ -1,0 +1,193 @@
+{
+  "title": "Basic Demo HTTP Metrics",
+  "description": "HTTP request rate, errors, and latency for basic-demo service using OTel metrics",
+  "tags": ["demo", "http"],
+  "version": "v5",
+  "layout": [
+    { "i": "rate", "x": 0, "y": 0, "w": 12, "h": 5 },
+    { "i": "err", "x": 12, "y": 0, "w": 12, "h": 5 },
+    { "i": "latency", "x": 0, "y": 5, "w": 12, "h": 5 },
+    { "i": "p99", "x": 12, "y": 5, "w": 12, "h": 5 }
+  ],
+  "widgets": [
+    {
+      "id": "rate",
+      "title": "Request Rate (by endpoint)",
+      "description": "Requests per second",
+      "panelTypes": "graph",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "yAxisUnit": "short",
+      "query": {
+        "id": "r1",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [{
+            "dataSource": "metrics",
+            "queryName": "A",
+            "expression": "A",
+            "disabled": false,
+            "legend": "{{http.route}}",
+            "stepInterval": 60,
+            "aggregations": [{
+              "metricName": "http.server.duration.count",
+              "temporality": null,
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "reduceTo": "sum"
+            }],
+            "filters": {
+              "items": [{"key": "service_name", "operator": "=", "value": "basic-demo"}],
+              "op": "AND"
+            },
+            "groupBy": [{"key": "http.route", "type": "tag"}],
+            "having": {"expression": ""},
+            "limit": null,
+            "orderBy": []
+          }],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{"name": "A", "query": "", "legend": "", "disabled": false}],
+        "promql": [{"name": "A", "query": "", "legend": "", "disabled": false}]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    },
+    {
+      "id": "err",
+      "title": "Error Rate",
+      "description": "Errors per second",
+      "panelTypes": "graph",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "yAxisUnit": "short",
+      "query": {
+        "id": "e1",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [{
+            "dataSource": "metrics",
+            "queryName": "A",
+            "expression": "A",
+            "disabled": false,
+            "legend": "{{http.status_code}}",
+            "stepInterval": 60,
+            "aggregations": [{
+              "metricName": "http.server.duration.count",
+              "temporality": null,
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "reduceTo": "sum"
+            }],
+            "filters": {
+              "items": [{"key": "service_name", "operator": "=", "value": "basic-demo"}],
+              "op": "AND"
+            },
+            "groupBy": [{"key": "http.status_code", "type": "tag"}],
+            "having": {"expression": ""},
+            "limit": null,
+            "orderBy": []
+          }],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{"name": "A", "query": "", "legend": "", "disabled": false}],
+        "promql": [{"name": "A", "query": "", "legend": "", "disabled": false}]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    },
+    {
+      "id": "latency",
+      "title": "Average Response Time (ms)",
+      "description": "Average latency by endpoint",
+      "panelTypes": "graph",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "yAxisUnit": "ns",
+      "query": {
+        "id": "l1",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [{
+            "dataSource": "metrics",
+            "queryName": "A",
+            "expression": "A",
+            "disabled": false,
+            "legend": "{{http.route}}",
+            "stepInterval": 60,
+            "aggregations": [{
+              "metricName": "http.server.duration.sum",
+              "temporality": null,
+              "timeAggregation": "rate",
+              "spaceAggregation": "sum",
+              "reduceTo": "sum"
+            }],
+            "filters": {
+              "items": [{"key": "service_name", "operator": "=", "value": "basic-demo"}],
+              "op": "AND"
+            },
+            "groupBy": [{"key": "http.route", "type": "tag"}],
+            "having": {"expression": ""},
+            "limit": null,
+            "orderBy": []
+          }],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{"name": "A", "query": "", "legend": "", "disabled": false}],
+        "promql": [{"name": "A", "query": "", "legend": "", "disabled": false}]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    },
+    {
+      "id": "p99",
+      "title": "P99 Latency (by endpoint)",
+      "description": "99th percentile",
+      "panelTypes": "graph",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "yAxisUnit": "ns",
+      "query": {
+        "id": "p1",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [{
+            "dataSource": "metrics",
+            "queryName": "A",
+            "expression": "A",
+            "disabled": false,
+            "legend": "{{http.route}}",
+            "stepInterval": 60,
+            "aggregations": [{
+              "metricName": "http.server.duration.sum",
+              "temporality": null,
+              "timeAggregation": "p99",
+              "spaceAggregation": "sum",
+              "reduceTo": "sum"
+            }],
+            "filters": {
+              "items": [{"key": "service_name", "operator": "=", "value": "basic-demo"}],
+              "op": "AND"
+            },
+            "groupBy": [{"key": "http.route", "type": "tag"}],
+            "having": {"expression": ""},
+            "limit": null,
+            "orderBy": []
+          }],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{"name": "A", "query": "", "legend": "", "disabled": false}],
+        "promql": [{"name": "A", "query": "", "legend": "", "disabled": false}]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    }
+  ],
+  "variables": {},
+  "crossPanelSyncMode": "None",
+  "crossPanelSyncedTooltipSeries": "All"
+}

@@ -1,0 +1,202 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: basic-demo-app
+  namespace: demo
+data:
+  app.py: |
+    from flask import Flask, jsonify, request
+    import random
+    import time
+    import sys
+    import logging
+
+    from opentelemetry import trace, metrics, _logs
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+    from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
+    resource = Resource.create({"service.name": "basic-demo"})
+    trace.set_tracer_provider(TracerProvider(resource=resource))
+
+    exporter = OTLPSpanExporter(
+        endpoint="k8s-collector-collector.platform.svc.cluster.local:4317",
+        insecure=True,
+    )
+    trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(exporter))
+
+    metric_reader = PeriodicExportingMetricReader(
+        OTLPMetricExporter(
+            endpoint="k8s-collector-collector.platform.svc.cluster.local:4317",
+            insecure=True,
+        )
+    )
+    metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[metric_reader]))
+
+    log_provider = LoggerProvider(resource=resource)
+    log_provider.add_log_record_processor(
+        BatchLogRecordProcessor(
+            OTLPLogExporter(
+                endpoint="k8s-collector-collector.platform.svc.cluster.local:4317",
+                insecure=True,
+            )
+        )
+    )
+    _logs.set_logger_provider(log_provider)
+
+    handler = LoggingHandler(logger_provider=log_provider)
+    logging.getLogger().addHandler(handler)
+    logging.getLogger().setLevel(logging.INFO)
+    logger = logging.getLogger("basic-demo")
+
+    app = Flask(__name__)
+    FlaskInstrumentor().instrument_app(app, meter_provider=metrics.get_meter_provider())
+
+    tracer = trace.get_tracer("basic-demo")
+
+    USERS = [
+        {"id": 1, "name": "Alice", "email": "alice@example.com"},
+        {"id": 2, "name": "Bob", "email": "bob@example.com"},
+        {"id": 3, "name": "Charlie", "email": "charlie@example.com"},
+    ]
+
+    @app.route("/")
+    def index():
+        logger.info("Home page requested")
+        with tracer.start_as_current_span("home-page") as span:
+            span.set_attribute("http.method", "GET")
+            span.set_attribute("http.url", "/")
+            return jsonify({"status": "ok", "service": "basic-demo"})
+
+
+    @app.route("/api/users")
+    def list_users():
+        logger.info("Listing all users")
+        with tracer.start_as_current_span("list-users") as span:
+            span.set_attribute("http.method", "GET")
+            span.set_attribute("http.url", "/api/users")
+
+            with tracer.start_as_current_span("db-query-users") as db_span:
+                db_span.set_attribute("db.system", "postgresql")
+                db_span.set_attribute("db.operation", "SELECT")
+                db_span.set_attribute("db.table", "users")
+                time.sleep(random.uniform(0.01, 0.05))
+
+            span.set_attribute("user.count", len(USERS))
+            return jsonify(USERS)
+
+
+    @app.route("/api/users/<int:user_id>")
+    def get_user(user_id):
+        with tracer.start_as_current_span("get-user") as span:
+            span.set_attribute("http.method", "GET")
+            span.set_attribute("http.url", f"/api/users/{user_id}")
+            span.set_attribute("user.id", user_id)
+
+            with tracer.start_as_current_span("cache-check") as cache_span:
+                cache_span.set_attribute("cache.system", "redis")
+                hit = random.choice([True, False])
+                cache_span.set_attribute("cache.hit", hit)
+                if hit:
+                    logger.info(f"Cache hit for user {user_id}")
+                else:
+                    logger.info(f"Cache miss for user {user_id}")
+                time.sleep(random.uniform(0.001, 0.01))
+
+            if not hit:
+                with tracer.start_as_current_span("db-fetch-user") as db_span:
+                    db_span.set_attribute("db.system", "postgresql")
+                    db_span.set_attribute("db.operation", "SELECT")
+                    db_span.set_attribute("db.table", "users")
+                    db_span.set_attribute("db.id", user_id)
+                    time.sleep(random.uniform(0.02, 0.08))
+
+            user = next((u for u in USERS if u["id"] == user_id), None)
+            if user is None:
+                span.set_attribute("http.status_code", 404)
+                logger.warning(f"User {user_id} not found")
+                return jsonify({"error": "not found"}), 404
+
+            span.set_attribute("http.status_code", 200)
+            return jsonify(user)
+
+
+    if __name__ == "__main__":
+        app.run(host="0.0.0.0", port=8080)
+  requirements.txt: |
+    flask==3.1.*
+    opentelemetry-api>=1.28
+    opentelemetry-sdk>=1.28
+    opentelemetry-exporter-otlp-proto-grpc>=1.28
+    opentelemetry-instrumentation-flask>=0.49b0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: basic-demo
+  namespace: demo
+  labels:
+    app: basic-demo
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  selector:
+    app: basic-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: basic-demo
+  namespace: demo
+  labels:
+    app: basic-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: basic-demo
+  template:
+    metadata:
+      labels:
+        app: basic-demo
+    spec:
+      containers:
+        - name: basic-demo
+          image: python:3.11-slim
+          command: ["sh", "-c"]
+          args:
+            - |
+              pip install -r /app/requirements.txt -q
+              python3 /app/app.py
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: app
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: app
+          configMap:
+            name: basic-demo-app

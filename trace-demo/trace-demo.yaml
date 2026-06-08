@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trace-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trace-demo-script
+  namespace: trace-demo
+data:
+  generate_traces.py: |
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    import time
+    import random
+
+    resource = Resource.create({"service.name": "demo-app"})
+    trace.set_tracer_provider(TracerProvider(resource=resource))
+
+    exporter = OTLPSpanExporter(
+        endpoint="my-release-signoz-otel-collector.platform.svc.cluster.local:4317",
+        insecure=True
+    )
+    trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(exporter))
+
+    tracer = trace.get_tracer("demo-app")
+
+    while True:
+        with tracer.start_as_current_span("main-operation") as span:
+            span.set_attribute("http.method", "GET")
+            span.set_attribute("http.url", "/api/demo")
+            
+            with tracer.start_as_current_span("database-query") as db_span:
+                db_span.set_attribute("db.system", "postgresql")
+                db_span.set_attribute("db.statement", "SELECT * FROM users")
+                time.sleep(random.uniform(0.01, 0.05))
+            
+            with tracer.start_as_current_span("cache-lookup") as cache_span:
+                cache_span.set_attribute("cache.hit", random.choice([True, False]))
+                time.sleep(random.uniform(0.001, 0.01))
+            
+            time.sleep(random.uniform(0.1, 0.5))
+        print(f"Exported trace at {time.time()}")
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trace-demo
+  namespace: trace-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trace-demo
+  template:
+    metadata:
+      labels:
+        app: trace-demo
+    spec:
+      containers:
+        - name: trace-generator
+          image: python:3.11-slim
+          command: ["sh", "-c"]
+          args:
+            - |
+              pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc -q
+              python3 /app/generate_traces.py
+          volumeMounts:
+            - name: script
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: script
+          configMap:
+            name: trace-demo-script

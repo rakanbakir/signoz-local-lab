@@ -1,0 +1,267 @@
+{
+  "title": "Basic Demo Overview",
+  "description": "Request rate, error rate, and latency for the basic-demo service",
+  "tags": ["demo", "basic-demo"],
+  "version": "v5",
+  "layout": [
+    { "i": "rate", "x": 0, "y": 0, "w": 12, "h": 4 },
+    { "i": "errors", "x": 12, "y": 0, "w": 12, "h": 4 },
+    { "i": "latency", "x": 0, "y": 4, "w": 12, "h": 4 },
+    { "i": "ops", "x": 12, "y": 4, "w": 12, "h": 4 },
+    { "i": "slows", "x": 0, "y": 8, "w": 24, "h": 4 }
+  ],
+  "widgets": [
+    {
+      "id": "rate",
+      "title": "Request Rate",
+      "description": "Requests per second by endpoint",
+      "panelTypes": "graph",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "yAxisUnit": "short",
+      "query": {
+        "id": "rate-q",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "traces",
+              "queryName": "A",
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{name}}",
+              "stepInterval": 60,
+              "aggregations": [
+                {
+                  "metricName": "signoz_latency_count",
+                  "temporality": null,
+                  "timeAggregation": "rate",
+                  "spaceAggregation": "sum",
+                  "reduceTo": "sum"
+                }
+              ],
+              "filters": {
+                "items": [
+                  { "key": "serviceName", "operator": "=", "value": "basic-demo" }
+                ],
+                "op": "AND"
+              },
+              "groupBy": [{ "key": "name", "type": "tag" }],
+              "having": { "expression": "" },
+              "limit": null,
+              "orderBy": []
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{ "name": "A", "query": "", "legend": "", "disabled": false }],
+        "promql": [{ "name": "A", "query": "", "legend": "", "disabled": false }]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    },
+    {
+      "id": "errors",
+      "title": "Error Rate",
+      "description": "Requests returning errors by endpoint",
+      "panelTypes": "graph",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "yAxisUnit": "short",
+      "query": {
+        "id": "errors-q",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "traces",
+              "queryName": "A",
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{name}} errors",
+              "stepInterval": 60,
+              "aggregations": [
+                {
+                  "metricName": "signoz_error_count",
+                  "temporality": null,
+                  "timeAggregation": "rate",
+                  "spaceAggregation": "sum",
+                  "reduceTo": "sum"
+                }
+              ],
+              "filters": {
+                "items": [
+                  { "key": "serviceName", "operator": "=", "value": "basic-demo" }
+                ],
+                "op": "AND"
+              },
+              "groupBy": [{ "key": "name", "type": "tag" }],
+              "having": { "expression": "" },
+              "limit": null,
+              "orderBy": []
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{ "name": "A", "query": "", "legend": "", "disabled": false }],
+        "promql": [{ "name": "A", "query": "", "legend": "", "disabled": false }]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    },
+    {
+      "id": "latency",
+      "title": "P99 Latency",
+      "description": "99th percentile request latency by endpoint",
+      "panelTypes": "graph",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "yAxisUnit": "ns",
+      "query": {
+        "id": "latency-q",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "traces",
+              "queryName": "A",
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{name}}",
+              "stepInterval": 60,
+              "aggregations": [
+                {
+                  "metricName": "duration_nano",
+                  "temporality": null,
+                  "timeAggregation": "p99",
+                  "spaceAggregation": "sum",
+                  "reduceTo": "sum"
+                }
+              ],
+              "filters": {
+                "items": [
+                  { "key": "serviceName", "operator": "=", "value": "basic-demo" }
+                ],
+                "op": "AND"
+              },
+              "groupBy": [{ "key": "name", "type": "tag" }],
+              "having": { "expression": "" },
+              "limit": null,
+              "orderBy": []
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{ "name": "A", "query": "", "legend": "", "disabled": false }],
+        "promql": [{ "name": "A", "query": "", "legend": "", "disabled": false }]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    },
+    {
+      "id": "ops",
+      "title": "Operations Breakdown",
+      "description": "Span count by operation name",
+      "panelTypes": "graph",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "yAxisUnit": "short",
+      "query": {
+        "id": "ops-q",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "traces",
+              "queryName": "A",
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{name}}",
+              "stepInterval": 60,
+              "aggregations": [
+                {
+                  "metricName": "signoz_latency_count",
+                  "temporality": null,
+                  "timeAggregation": "rate",
+                  "spaceAggregation": "sum",
+                  "reduceTo": "sum"
+                }
+              ],
+              "filters": {
+                "items": [
+                  { "key": "serviceName", "operator": "=", "value": "basic-demo" }
+                ],
+                "op": "AND"
+              },
+              "groupBy": [{ "key": "name", "type": "tag" }],
+              "having": { "expression": "" },
+              "limit": null,
+              "orderBy": []
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{ "name": "A", "query": "", "legend": "", "disabled": false }],
+        "promql": [{ "name": "A", "query": "", "legend": "", "disabled": false }]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    },
+    {
+      "id": "slows",
+      "title": "Slowest Spans (P99 by Operation)",
+      "description": "Top slowest operation names",
+      "panelTypes": "value",
+      "isStacked": false,
+      "nullZeroValues": "zero",
+      "opacity": "1",
+      "query": {
+        "id": "slows-q",
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "dataSource": "traces",
+              "queryName": "A",
+              "expression": "A",
+              "disabled": false,
+              "legend": "{{name}}",
+              "stepInterval": 60,
+              "aggregations": [
+                {
+                  "metricName": "duration_nano",
+                  "temporality": null,
+                  "timeAggregation": "p99",
+                  "spaceAggregation": "sum",
+                  "reduceTo": "sum"
+                }
+              ],
+              "filters": {
+                "items": [
+                  { "key": "serviceName", "operator": "=", "value": "basic-demo" }
+                ],
+                "op": "AND"
+              },
+              "groupBy": [{ "key": "name", "type": "tag" }],
+              "having": { "expression": "" },
+              "limit": 10,
+              "orderBy": [{ "columnName": "A", "order": "desc" }]
+            }
+          ],
+          "queryFormulas": []
+        },
+        "clickhouse_sql": [{ "name": "A", "query": "", "legend": "", "disabled": false }],
+        "promql": [{ "name": "A", "query": "", "legend": "", "disabled": false }]
+      },
+      "thresholds": [],
+      "timePreferance": "GLOBAL_TIME"
+    }
+  ],
+  "variables": {},
+  "crossPanelSyncMode": "None",
+  "crossPanelSyncedTooltipSeries": "All"
+}
