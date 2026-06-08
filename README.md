@@ -59,7 +59,14 @@ curl http://localhost:8080/api/users/1
 | **k8s-collector** | OTel Collector DaemonSet — collects cluster-wide telemetry |
 | **OTel Operator** | Manages OpenTelemetry collectors and auto-instrumentation |
 | **basic-demo** | Python Flask app with manual OTel instrumentation |
-| **trace-demo** | Simple Python trace generator |
+| **nginx-ingress** | Ingress controller for signoz.local access |
+| **cert-manager** | TLS certificate management for OTel Operator |
+
+Optional demo apps (deploy manually):
+
+| Component | Description |
+|-----------|-------------|
+| **trace-demo** | Simple Python trace generator (`kubectl apply -f trace-demo/trace-demo.yaml`) |
 
 ## Demo App
 
